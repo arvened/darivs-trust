@@ -1,4 +1,5 @@
 # Darivs Trust - NGO Verification Layer
+Grant: NLnet NGI Zero Commons Fund (2026-06-3b1) | €35,000 | Application submitted June 2026 — Pending review | Timeline: Phase 1 (Sep 2026 - Dec 2026) | Phase 2+ (2027)
 
 [![NLnet Funded](https://img.shields.io/badge/NLnet-2026--06--3b1-blue)](https://nlnet.nl)
 [![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
@@ -18,7 +19,10 @@ Darivs Trust is an open-source verification layer that enables charitable platfo
 - ✅ **Validate impact reporting** with confidence scoring
 - ✅ **Ensure compliance** with GDPR, EU, and Ukraine regulations
 
-**Grant:** NLnet NGI Zero Commons Fund (2026-06-3b1) | €35,000
+Grant application submitted to NLnet NGI Zero Commons Fund.
+
+Grant: 2026-06-3b1 | €35,000 | Status: Pending review | Timeline: Sep 2026 - Aug 2027
+
 **Timeline:** Phase 1 (Sep 2026 - Dec 2026) | Phase 2+ (2027)
 
 ---
