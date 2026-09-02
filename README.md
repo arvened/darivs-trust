@@ -9,6 +9,10 @@ Grant: NLnet NGI Zero Commons Fund (2026-06-3b1) | €35,000 | Application submi
 **Trust infrastructure for charitable platforms | Verification layer for NGO donations**
 
 ---
+## ⚠️ Development Status
+
+This repository is currently a pre-grant proof-of-concept. Development began ahead of the official NLnet grant execution period (Grant ID: 2026-06-3b1). The v0.1.0-alpha release demonstrates registry connector viability and initial architecture. Grant funding will finance the production-ready verification engine, transaction routing, and full documentation.
+
 
 ## 🎯 Overview
 
@@ -26,6 +30,16 @@ Grant: 2026-06-3b1 | €35,000 | Status: Pending review | Timeline: Sep 2026 - A
 **Timeline:** Phase 1 (Sep 2026 - Dec 2026) | Phase 2+ (2027)
 
 ---
+## 🔍 Чем отличается от существующих решений
+
+| Решение | Что покрывает | Чего не хватает для Darivs Trust |
+|---|---|---|
+| Ручная проверка НКО (due diligence вручную) | Разовая проверка юрлица перед разовой транзакцией | Не масштабируется, нет API, нет batch-verification, нет прозрачного трекинга транзакций |
+| GuideStar / Charity Navigator (US-центричные) | Рейтинги и базовая верификация американских NGO | Не покрывает Украину/Польшу/ЕС реестры, нет unified API для нескольких юрисдикций |
+| Отдельные gov API (ЄДРПОУ, KRS) | Официальные данные о регистрации по одной стране | Нет единого интерфейса, нет верификации потока донатов, нет impact reporting |
+
+R&D-компонент: унификация разнородных схем данных нескольких государственных реестров (разные форматы, языки, поля) под единую верифицируемую модель — нетривиальная исследовательская задача, а не просто API-wrapper. Darivs Trust исследует и реализует эту unified verification layer поверх государственных реестров Украины и Польши, добавляя верификацию транзакций и impact-репортинг.
+
 
 ## 🚀 Quick Start
 
@@ -334,21 +348,23 @@ MIT License - See [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-Funded by [NLnet Foundation](https://nlnet.nl) through the NGI Zero Commons Fund.
 
-**Grant:** 2026-06-3b1 | €35,000
-**Timeline:** Sep 2026 - Aug 2027
+Grant application submitted to NLnet Foundation (NGI Zero Commons Fund). Status: pending review.
 
----
+Grant: 2026-06-3b1 | €35,000 | Timeline (if approved): Sep 2026 - Aug 2027
 
 ## 📈 Roadmap
 
-**v0.1.0-alpha (Jul 28):** Registry connectors + unified interface
-**v0.1.0-beta (Aug 11):** Verification engine + transaction routing
-**v0.1.0 (Aug 25):** Full documentation + examples
-**Phase 1 (Sep-Dec 2026):** Production integration + additional features
 
----
+Завершено (pre-grant proof-of-concept):
+- ✅ v0.1.0-alpha: Registry connectors (Ukraine, Poland) + unified interface
 
-**Status:** 🟢 Active Development
-**Last Updated:** 2026-07-15
+В процессе (после одобрения гранта):
+- 🔄 v0.1.0-beta: Verification engine + transaction routing
+- 🔄 v0.1.0: Full documentation + examples
+
+Планируется:
+- ⏳ Phase 1 (Sep 2026 - Dec 2026): Production integration + additional features
+
+Status: 🟢 Active Development
+
