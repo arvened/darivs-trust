@@ -1,4 +1,4 @@
-"""Poland NGO Registry Connector (KRS)"""
+"""Ukraine NGO Registry Connector (ЄДРПОУ)"""
 
 from typing import Dict, Any, Optional
 from datetime import datetime
@@ -17,22 +17,22 @@ from src.connectors.base import (
 )
 
 
-class PolandConnector(CachedConnector):
-    """Connector for Poland NGO Registry (KRS)"""
+class UkraineConnector(CachedConnector):
+    """Connector for Ukraine NGO Registry (ЄДРПОУ)"""
     
-    KRS_API_BASE = "https://api.eregister.eu.org"
-    ALTERNATIVE_API = "https://www.gov.pl/api/v1/register"
+    EDRPOU_API_BASE = "https://dracs.pru.gov.ua/api"
+    ALTERNATIVE_API = "https://data.gov.ua/api/3/action"
     
     @property
     def country_code(self) -> str:
-        return "PL"
+        return "UA"
     
     @property
     def registry_name(self) -> str:
-        return "KRS (Polish National Court Register)"
+        return "ЄДРПОУ (Unified State Register)"
     
     @retry(
-        stop=stop_after_attempt(3),
+        stop=stop_after_attempt(3), reraise=True,
         wait=wait_exponential(multiplier=1, min=2, max=10)
     )
     async def verify(
@@ -40,53 +40,53 @@ class PolandConnector(CachedConnector):
         registration_number: str,
         **kwargs
     ) -> NGOData:
-        """Verify Poland NGO by KRS registration number"""
+        """Verify Ukraine NGO by ЄДРПОУ registration number"""
         
         cached = self._get_cached(registration_number)
         if cached:
             return cached
         
-        if not self._validate_krs(registration_number):
-            raise VerificationError(f"Invalid KRS format: {registration_number}")
+        if not self._validate_edrpou(registration_number):
+            raise VerificationError(f"Invalid EDRPOU format: {registration_number}")
         
         try:
-            ngo_data = await self._lookup_krs(registration_number)
+            ngo_data = await self._lookup_edrpou(registration_number)
             self._set_cached(registration_number, ngo_data)
             return ngo_data
             
         except asyncio.TimeoutError:
             raise RegistryTimeoutError(
-                f"Timeout verifying {registration_number} in KRS registry"
+                f"Timeout verifying {registration_number} in EDRPOU registry"
             )
         except httpx.ConnectError:
             raise RegistryConnectionError(
-                f"Cannot connect to KRS registry"
+                f"Cannot connect to EDRPOU registry"
             )
         except httpx.HTTPError as e:
-            raise VerificationError(f"KRS API error: {str(e)}")
+            raise VerificationError(f"EDRPOU API error: {str(e)}")
     
-    async def _lookup_krs(self, krs: str) -> NGOData:
-        """Look up NGO in KRS registry"""
+    async def _lookup_edrpou(self, edrpou: str) -> NGOData:
+        """Look up NGO in EDRPOU registry"""
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             try:
-                data = await self._query_krs_api(client, krs)
-                return self._parse_krs_response(krs, data)
+                data = await self._query_edrpou_api(client, edrpou)
+                return self._parse_edrpou_response(edrpou, data)
             except (RegistryNotFoundError, VerificationError):
                 try:
-                    data = await self._query_alternative_api(client, krs)
-                    return self._parse_alternative_response(krs, data)
+                    data = await self._query_alternative_api(client, edrpou)
+                    return self._parse_alternative_response(edrpou, data)
                 except VerificationError:
                     raise RegistryNotFoundError(
-                        f"NGO with KRS {krs} not found in registries"
+                        f"NGO with EDRPOU {edrpou} not found in registries"
                     )
     
-    async def _query_krs_api(
+    async def _query_edrpou_api(
         self,
         client: httpx.AsyncClient,
-        krs: str
+        edrpou: str
     ) -> Dict[str, Any]:
-        """Query primary KRS API"""
-        endpoint = f"{self.KRS_API_BASE}/organization/{krs}"
+        """Query primary EDRPOU API"""
+        endpoint = f"{self.EDRPOU_API_BASE}/organizations/{edrpou}"
         
         response = await client.get(
             endpoint,
@@ -94,7 +94,7 @@ class PolandConnector(CachedConnector):
         )
         
         if response.status_code == 404:
-            raise RegistryNotFoundError(f"KRS {krs} not found")
+            raise RegistryNotFoundError(f"EDRPOU {edrpou} not found")
         
         response.raise_for_status()
         return response.json()
@@ -102,40 +102,40 @@ class PolandConnector(CachedConnector):
     async def _query_alternative_api(
         self,
         client: httpx.AsyncClient,
-        krs: str
+        edrpou: str
     ) -> Dict[str, Any]:
-        """Query alternative Polish registry API"""
-        endpoint = f"{self.ALTERNATIVE_API}/krs"
+        """Query alternative Ukrainian data API"""
+        endpoint = f"{self.ALTERNATIVE_API}/package_search"
         
         response = await client.get(
             endpoint,
             params={
-                "number": krs,
-                "format": "json"
+                "q": f"edrpou:{edrpou}",
+                "rows": 1
             },
             headers={"Accept": "application/json"}
         )
         
         if response.status_code == 404:
-            raise RegistryNotFoundError(f"KRS {krs} not found")
+            raise RegistryNotFoundError(f"EDRPOU {edrpou} not found")
         
         response.raise_for_status()
         data = response.json()
         
-        if not data or not data.get("data"):
-            raise RegistryNotFoundError(f"KRS {krs} not found")
+        if not data.get("result", {}).get("results"):
+            raise RegistryNotFoundError(f"EDRPOU {edrpou} not found")
         
-        return data["data"][0] if isinstance(data["data"], list) else data["data"]
+        return data["result"]["results"][0]
     
-    def _parse_krs_response(
+    def _parse_edrpou_response(
         self,
-        krs: str,
+        edrpou: str,
         data: Dict[str, Any]
     ) -> NGOData:
         """Parse primary API response"""
         return NGOData(
-            country_code="PL",
-            registration_number=krs,
+            country_code="UA",
+            registration_number=edrpou,
             name=data.get("name", ""),
             legal_name=data.get("legal_name"),
             status=self._normalize_status(data.get("status", "unknown")),
@@ -146,46 +146,48 @@ class PolandConnector(CachedConnector):
             email=data.get("email"),
             phone=data.get("phone"),
             website=data.get("website"),
-            registry_id=krs,
-            registry_url=f"https://www.gov.pl/web/rejestry/krs?number={krs}",
+            registry_id=edrpou,
+            registry_url=f"https://dracs.pru.gov.ua/search?edrpou={edrpou}",
             verified_at=datetime.utcnow(),
-            data_source="KRS",
+            data_source="EDRPOU",
             confidence_score=0.95
         )
     
     def _parse_alternative_response(
         self,
-        krs: str,
+        edrpou: str,
         data: Dict[str, Any]
     ) -> NGOData:
         """Parse alternative API response"""
+        extras = data.get("extras", {})
+        
         return NGOData(
-            country_code="PL",
-            registration_number=krs,
-            name=data.get("name", ""),
-            legal_name=data.get("legal_name"),
-            status=self._normalize_status(data.get("status", "unknown")),
-            registration_date=self._parse_date(data.get("registration_date")),
-            address=data.get("address"),
-            city=data.get("city"),
-            postal_code=data.get("postal_code"),
-            email=data.get("email"),
-            phone=data.get("phone"),
-            website=data.get("website"),
-            registry_id=krs,
-            registry_url=f"https://www.gov.pl/web/rejestry",
+            country_code="UA",
+            registration_number=edrpou,
+            name=data.get("title", ""),
+            legal_name=data.get("name"),
+            status=self._normalize_status(extras.get("status", "unknown")),
+            registration_date=self._parse_date(extras.get("registration_date")),
+            address=extras.get("address"),
+            city=extras.get("city"),
+            postal_code=extras.get("postal_code"),
+            email=extras.get("email"),
+            phone=extras.get("phone"),
+            website=extras.get("website"),
+            registry_id=edrpou,
+            registry_url=f"https://data.gov.ua/api/3/action/package_show?id={data.get('id')}",
             verified_at=datetime.utcnow(),
-            data_source="KRS (via gov.pl)",
+            data_source="EDRPOU (via data.gov.ua)",
             confidence_score=0.85
         )
     
     @staticmethod
-    def _validate_krs(krs: str) -> bool:
-        """Validate KRS format"""
-        if not krs or not str(krs).isdigit():
+    def _validate_edrpou(edrpou: str) -> bool:
+        """Validate EDRPOU format"""
+        if not edrpou or not str(edrpou).isdigit():
             return False
         
-        if len(str(krs)) != 10:
+        if len(str(edrpou)) != 8:
             return False
         
         return True
@@ -196,12 +198,13 @@ class PolandConnector(CachedConnector):
         status_lower = status.lower() if status else "unknown"
         
         mappings = {
-            "aktywna": "active",
-            "nieaktywna": "inactive",
-            "zawieszona": "suspended",
-            "likwidowana": "liquidated",
-            "rozwiązana": "liquidated",
-            "wznowiona": "active",
+            "активна": "active",
+            "неактивна": "inactive",
+            "припинена": "liquidated",
+            "зупинена": "suspended",
+            "активная": "active",
+            "неактивная": "inactive",
+            "прекращена": "liquidated",
         }
         
         return mappings.get(status_lower, status_lower)
@@ -217,7 +220,6 @@ class PolandConnector(CachedConnector):
             "%d.%m.%Y",
             "%Y-%m-%dT%H:%M:%S",
             "%Y-%m-%dT%H:%M:%SZ",
-            "%d-%m-%Y",
         ]
         
         for fmt in formats:
