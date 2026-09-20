@@ -1,229 +1,235 @@
-"""Poland NGO Registry Connector (KRS)"""
+"""
+Abstract Base Connector for NGO Registry Verification
+Defines interface for all registry connectors (Ukraine, Poland, etc.)
+"""
 
-from typing import Dict, Any, Optional
+from abc import ABC, abstractmethod
+from typing import Dict, Any, Optional, List
 from datetime import datetime
-import httpx
-import asyncio
-from tenacity import retry, stop_after_attempt, wait_exponential
-
-from src.connectors.base import (
-    BaseConnector,
-    NGOData,
-    RegistryNotFoundError,
-    RegistryTimeoutError,
-    RegistryConnectionError,
-    VerificationError,
-    CachedConnector,
-)
+from pydantic import BaseModel
 
 
-class PolandConnector(CachedConnector):
-    """Connector for Poland NGO Registry (KRS)"""
+class NGOData(BaseModel):
+    """Standardized NGO data from registry"""
     
-    KRS_API_BASE = "https://api.eregister.eu.org"
-    ALTERNATIVE_API = "https://www.gov.pl/api/v1/register"
+    country_code: str  # ISO 3166-1 alpha-2 (UA, PL, etc.)
+    registration_number: str
+    name: str
+    legal_name: Optional[str] = None
+    status: str  # active, inactive, suspended, etc.
+    registration_date: Optional[datetime] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    postal_code: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    website: Optional[str] = None
+    
+    # Registry-specific data
+    registry_id: str  # Unique ID from registry
+    registry_url: Optional[str] = None  # Link to registry entry
+    
+    # Verification metadata
+    verified_at: datetime
+    data_source: str  # Registry name
+    confidence_score: float  # 0.0-1.0
+    
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        }
+
+
+class VerificationError(Exception):
+    """Base exception for verification errors"""
+    pass
+
+
+class RegistryNotFoundError(VerificationError):
+    """NGO not found in registry"""
+    pass
+
+
+class RegistryTimeoutError(VerificationError):
+    """Registry API timeout"""
+    pass
+
+
+class RegistryConnectionError(VerificationError):
+    """Cannot connect to registry"""
+    pass
+
+
+class BaseConnector(ABC):
+    """
+    Abstract base connector for NGO registries
+    
+    All registry connectors must implement:
+    - verify(): Verify single NGO
+    - batch_verify(): Verify multiple NGOs
+    - is_active(): Check if NGO is currently active
+    """
+    
+    def __init__(self, timeout: int = 30, retries: int = 3):
+        """
+        Initialize connector
+        
+        Args:
+            timeout: Request timeout in seconds
+            retries: Number of retry attempts
+        """
+        self.timeout = timeout
+        self.retries = retries
     
     @property
+    @abstractmethod
     def country_code(self) -> str:
-        return "PL"
+        """ISO 3166-1 alpha-2 country code (UA, PL, etc.)"""
+        pass
     
     @property
+    @abstractmethod
     def registry_name(self) -> str:
-        return "KRS (Polish National Court Register)"
+        """Human-readable registry name (ЄДРПОУ, KRS, etc.)"""
+        pass
     
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=2, max=10)
-    )
+    @abstractmethod
     async def verify(
         self,
         registration_number: str,
         **kwargs
     ) -> NGOData:
-        """Verify Poland NGO by KRS registration number"""
+        """
+        Verify NGO in registry
         
-        cached = self._get_cached(registration_number)
-        if cached:
-            return cached
-        
-        if not self._validate_krs(registration_number):
-            raise VerificationError(f"Invalid KRS format: {registration_number}")
-        
-        try:
-            ngo_data = await self._lookup_krs(registration_number)
-            self._set_cached(registration_number, ngo_data)
-            return ngo_data
+        Args:
+            registration_number: Registry-specific ID
+            **kwargs: Additional lookup parameters
             
-        except asyncio.TimeoutError:
-            raise RegistryTimeoutError(
-                f"Timeout verifying {registration_number} in KRS registry"
-            )
-        except httpx.ConnectError:
-            raise RegistryConnectionError(
-                f"Cannot connect to KRS registry"
-            )
-        except httpx.HTTPError as e:
-            raise VerificationError(f"KRS API error: {str(e)}")
+        Returns:
+            NGOData: Standardized NGO data
+            
+        Raises:
+            RegistryNotFoundError: NGO not found
+            RegistryTimeoutError: API timeout
+            RegistryConnectionError: Cannot connect
+            VerificationError: Other errors
+        """
+        pass
     
-    async def _lookup_krs(self, krs: str) -> NGOData:
-        """Look up NGO in KRS registry"""
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
+    async def batch_verify(
+        self,
+        registration_numbers: List[str],
+        stop_on_error: bool = False
+    ) -> List[tuple[str, Optional[NGOData], Optional[Exception]]]:
+        """
+        Verify multiple NGOs
+        
+        Args:
+            registration_numbers: List of registry IDs
+            stop_on_error: Stop on first error
+            
+        Returns:
+            List of (reg_number, ngo_data, error) tuples
+        """
+        results = []
+        
+        for reg_num in registration_numbers:
             try:
-                data = await self._query_krs_api(client, krs)
-                return self._parse_krs_response(krs, data)
-            except (RegistryNotFoundError, VerificationError):
-                try:
-                    data = await self._query_alternative_api(client, krs)
-                    return self._parse_alternative_response(krs, data)
-                except VerificationError:
-                    raise RegistryNotFoundError(
-                        f"NGO with KRS {krs} not found in registries"
-                    )
+                ngo_data = await self.verify(reg_num)
+                results.append((reg_num, ngo_data, None))
+            except VerificationError as e:
+                if stop_on_error:
+                    raise
+                results.append((reg_num, None, e))
+        
+        return results
     
-    async def _query_krs_api(
-        self,
-        client: httpx.AsyncClient,
-        krs: str
-    ) -> Dict[str, Any]:
-        """Query primary KRS API"""
-        endpoint = f"{self.KRS_API_BASE}/organization/{krs}"
+    async def is_active(self, registration_number: str) -> bool:
+        """
+        Check if NGO is currently active
         
-        response = await client.get(
-            endpoint,
-            headers={"Accept": "application/json"}
-        )
-        
-        if response.status_code == 404:
-            raise RegistryNotFoundError(f"KRS {krs} not found")
-        
-        response.raise_for_status()
-        return response.json()
-    
-    async def _query_alternative_api(
-        self,
-        client: httpx.AsyncClient,
-        krs: str
-    ) -> Dict[str, Any]:
-        """Query alternative Polish registry API"""
-        endpoint = f"{self.ALTERNATIVE_API}/krs"
-        
-        response = await client.get(
-            endpoint,
-            params={
-                "number": krs,
-                "format": "json"
-            },
-            headers={"Accept": "application/json"}
-        )
-        
-        if response.status_code == 404:
-            raise RegistryNotFoundError(f"KRS {krs} not found")
-        
-        response.raise_for_status()
-        data = response.json()
-        
-        if not data or not data.get("data"):
-            raise RegistryNotFoundError(f"KRS {krs} not found")
-        
-        return data["data"][0] if isinstance(data["data"], list) else data["data"]
-    
-    def _parse_krs_response(
-        self,
-        krs: str,
-        data: Dict[str, Any]
-    ) -> NGOData:
-        """Parse primary API response"""
-        return NGOData(
-            country_code="PL",
-            registration_number=krs,
-            name=data.get("name", ""),
-            legal_name=data.get("legal_name"),
-            status=self._normalize_status(data.get("status", "unknown")),
-            registration_date=self._parse_date(data.get("registration_date")),
-            address=data.get("address"),
-            city=data.get("city"),
-            postal_code=data.get("postal_code"),
-            email=data.get("email"),
-            phone=data.get("phone"),
-            website=data.get("website"),
-            registry_id=krs,
-            registry_url=f"https://www.gov.pl/web/rejestry/krs?number={krs}",
-            verified_at=datetime.utcnow(),
-            data_source="KRS",
-            confidence_score=0.95
-        )
-    
-    def _parse_alternative_response(
-        self,
-        krs: str,
-        data: Dict[str, Any]
-    ) -> NGOData:
-        """Parse alternative API response"""
-        return NGOData(
-            country_code="PL",
-            registration_number=krs,
-            name=data.get("name", ""),
-            legal_name=data.get("legal_name"),
-            status=self._normalize_status(data.get("status", "unknown")),
-            registration_date=self._parse_date(data.get("registration_date")),
-            address=data.get("address"),
-            city=data.get("city"),
-            postal_code=data.get("postal_code"),
-            email=data.get("email"),
-            phone=data.get("phone"),
-            website=data.get("website"),
-            registry_id=krs,
-            registry_url=f"https://www.gov.pl/web/rejestry",
-            verified_at=datetime.utcnow(),
-            data_source="KRS (via gov.pl)",
-            confidence_score=0.85
-        )
+        Args:
+            registration_number: Registry ID
+Returns:
+            bool: True if active, False otherwise
+        """
+        try:
+            ngo_data = await self.verify(registration_number)
+            return ngo_data.status.lower() in ['active', 'активна', 'aktywna']
+        except VerificationError:
+            return False
     
     @staticmethod
-    def _validate_krs(krs: str) -> bool:
-        """Validate KRS format"""
-        if not krs or not str(krs).isdigit():
-            return False
+    def for_country(country_code: str) -> 'BaseConnector':
+        """
+        Factory method to get connector for country
         
-        if len(str(krs)) != 10:
-            return False
+        Args:
+            country_code: ISO 3166-1 alpha-2 code
+            
+        Returns:
+            BaseConnector: Appropriate connector
+            
+        Raises:
+            ValueError: Country not supported
+        """
+        from src.connectors.ukraine import UkraineConnector
+        from src.connectors.poland import PolandConnector
         
-        return True
-    
-    @staticmethod
-    def _normalize_status(status: str) -> str:
-        """Normalize status to standard format"""
-        status_lower = status.lower() if status else "unknown"
-        
-        mappings = {
-            "aktywna": "active",
-            "nieaktywna": "inactive",
-            "zawieszona": "suspended",
-            "likwidowana": "liquidated",
-            "rozwiązana": "liquidated",
-            "wznowiona": "active",
+        connectors = {
+            'UA': UkraineConnector,
+            'PL': PolandConnector,
         }
         
-        return mappings.get(status_lower, status_lower)
+        connector_class = connectors.get(country_code.upper())
+        if not connector_class:
+            raise ValueError(f"Unsupported country: {country_code}")
+        
+        return connector_class()
+
+
+class CachedConnector(BaseConnector):
+    """
+    Connector with caching support
     
-    @staticmethod
-    def _parse_date(date_str: Optional[str]) -> Optional[datetime]:
-        """Parse date from various formats"""
-        if not date_str:
-            return None
+    Caches verified NGOs to reduce API calls
+    """
+    
+    def __init__(self, timeout: int = 30, retries: int = 3, cache_ttl: int = 3600):
+        """
+        Initialize connector with cache
         
-        formats = [
-            "%Y-%m-%d",
-            "%d.%m.%Y",
-            "%Y-%m-%dT%H:%M:%S",
-            "%Y-%m-%dT%H:%M:%SZ",
-            "%d-%m-%Y",
-        ]
-        
-        for fmt in formats:
-            try:
-                return datetime.strptime(str(date_str), fmt)
-            except ValueError:
-                continue
+        Args:
+            timeout: Request timeout
+            retries: Number of retries
+            cache_ttl: Cache time-to-live in seconds (default: 1 hour)
+        """
+        super().__init__(timeout, retries)
+        self.cache_ttl = cache_ttl
+        self._cache: Dict[str, tuple[NGOData, datetime]] = {}
+    
+    def _get_cached(self, registration_number: str) -> Optional[NGOData]:
+        """Get NGO from cache if valid"""
+        if registration_number in self._cache:
+            ngo_data, cached_at = self._cache[registration_number]
+            age = (datetime.utcnow() - cached_at).total_seconds()
+            
+            if age < self.cache_ttl:
+                return ngo_data
+            else:
+                del self._cache[registration_number]
         
         return None
+    
+    def _set_cached(self, registration_number: str, ngo_data: NGOData) -> None:
+        """Store NGO in cache"""
+        self._cache[registration_number] = (ngo_data, datetime.utcnow())
+    
+    def clear_cache(self) -> None:
+        """Clear all cached entries"""
+        self._cache.clear()
+    
+    def cache_size(self) -> int:
+        """Get current cache size"""
+        return len(self._cache)
