@@ -1,25 +1,32 @@
 # Changelog
 
-## [0.1.0-alpha] - 2026-07-12
+All notable changes to this project are recorded here. Dates are ISO 8601.
+
+## [Unreleased] - 2026-09-20
+
+### Changed
+- Repository layout corrected: code in src/connectors/, tests in tests/.
+- Restored src/connectors/base.py (it had been overwritten by a copy of poland.py).
+- Retry logic now re-raises the original registry error (reraise=True).
+- requirements.txt now lists only the packages the code uses; test packages are in requirements-dev.txt.
+- GitHub Actions workflow runs the tests on Python 3.12.
+- README, CONTRIBUTING and the v0.1.0-alpha release notes rewritten to match the verified state.
+
+### Removed
+- Out-of-scope political_campaign.py and its test file.
+- Internal status reports and notes that claimed the work was complete.
+
+### Verified on 2026-09-20
+- 43 automated tests pass; 67% line coverage of src/ (mocked registry responses).
+- Not verified: behaviour against the live registries.
+
+## [0.1.0-alpha]
+
+Pre-grant prototype snapshot (tag v0.1.0-alpha). Earlier notes about production readiness, 52 tests and 60%+ coverage were not verified and are withdrawn.
 
 ### Added
-- Ukraine ЄДРПОУ NGO registry connector (async, cached, retry)
-- Poland KRS NGO registry connector (async, cached, retry)
-- Unified BaseConnector interface with factory pattern
-- NGOData Pydantic model for standardized registry data
-- 52 comprehensive tests (60%+ code coverage)
-- pytest configuration and fixtures
-- GitHub Actions CI/CD pipeline
-- Complete README and contributing guidelines
-- Project status report and documentation
-
-### Features
-- Async/await support for all registry operations
-- Automatic retry mechanism with exponential backoff
-- In-memory caching with TTL management
-- Comprehensive error handling (5 exception types)
-- Multi-Python version support (3.9-3.12)
-- Type hints and full docstrings
-
-### Status
-Week 1-2 complete. Ready for Week 3-4 (Verification Engine development).
+- Prototype connector for the Ukrainian registry (EDRPOU).
+- Prototype connector for the Polish registry (KRS).
+- BaseConnector interface with a factory method.
+- NGOData Pydantic model for standardised registry data.
+- Initial test suite (pytest).
