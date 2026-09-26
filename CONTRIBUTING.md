@@ -27,6 +27,16 @@ pytest --cov=src
 4. Use clear commit messages, for example feat:, fix:, docs:, test:, refactor:, ci:.
 5. Open a pull request against main. The GitHub Actions tests must pass.
 
+## Use of generative AI
+
+AI coding assistants are allowed, but you must understand and be able to explain everything you submit. If a commit adds AI-generated code, say so in the commit message: name the model (and version) and summarise the prompt, for example:
+
+    test: add KRS timeout tests
+
+    Generated with Claude (claude-opus-5-5). Prompt: "Write pytest tests
+    for PolandConnector timeout handling using mocked httpx responses."
+    Reviewed and corrected by hand.
+
 ## Reporting issues
 
 Use GitHub Issues. Please include what you did, what you expected, what happened, and your Python version.

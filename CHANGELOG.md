@@ -2,7 +2,14 @@
 
 All notable changes to this project are recorded here. Dates are ISO 8601.
 
-## [Unreleased] - 2026-09-20
+## [Unreleased] - 2026-09-27
+
+### Changed
+- README: added a section on the use of generative AI; clarified the maintainer's role in the pilot foundation.
+- CONTRIBUTING: added rules for disclosing AI-generated code in commits.
+- Removed out-of-scope files and internal reports from the git history.
+
+## 2026-09-20
 
 ### Changed
 - Repository layout corrected: code in src/connectors/, tests in tests/.

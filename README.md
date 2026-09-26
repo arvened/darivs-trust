@@ -11,9 +11,7 @@ Pre-grant proof of concept. Early stage, not production-ready.
 
 An application (ID 2026-06-3b1, €35,000) has been submitted to the NLnet NGI Zero Commons Fund and is under review. No funding has been awarded. The work listed under "Planned" would only be funded if the application is approved, and dates depend on the project start date confirmed by NLnet.
 
-Disclosure: the maintainer is also the founder of a Ukrainian charitable foundation that is a candidate pilot partner. A pilot with that foundation would not be counted as independent adoption.
-
-Parts of the code were drafted with AI coding assistants (Claude). The maintainer is responsible for the repository.
+Disclosure: the maintainer, Eduard Arbitman, is a co-founder and the director of Charity Fund "Glory of Ukraine", which is named as a candidate pilot partner. A pilot with that foundation would not count as independent adoption.
 
 ## What exists today
 
@@ -48,6 +46,12 @@ python -m venv venv
 source venv/bin/activate   # Windows: venv\Scripts\activate
 pip install -r requirements-dev.txt
 pytest --cov=src
+
+## Use of generative AI
+
+The prototype code, the tests and most of the documentation in this repository were generated with Claude (Anthropic) under the direction of Eduard Arbitman. His part was defining the requirements and architecture, reviewing and testing the generated output, finding and correcting errors, and deciding what goes into the repository. He is responsible for its content.
+
+This follows the NLnet policy on generative AI. If the project is funded, AI assistants may still be used as tools, but the funded work will be done and understood by the human team, and every commit that adds AI-generated code will name the model and summarise the prompt in its commit message.
 
 ## Contributing
 
