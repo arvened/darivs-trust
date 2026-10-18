@@ -1,4 +1,4 @@
-Version: 0.1.0-alpha (pre-grant prototype; unreleased changes on main, see CHANGELOG.md)
+Version: 0.1.0-alpha (prototype; unreleased changes on main, see CHANGELOG.md)
 Status: early-stage prototype, not production-ready
 Tests: 43 passing, 67% line coverage of src/ (mocked registry responses), measured 2026-09-20
-Grant: NLnet application 2026-06-3b1, under review (no funding awarded)
+Grant: NLnet application 2026-06-3b1, not funded

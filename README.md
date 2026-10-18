@@ -7,9 +7,9 @@ Open-source verification layer for NGO registry data (Ukraine, Poland).
 
 ## Project status
 
-Pre-grant proof of concept. Early stage, not production-ready.
+Proof of concept. Early stage, not production-ready. Active development is paused.
 
-An application (ID 2026-06-3b1, €35,000) has been submitted to the NLnet NGI Zero Commons Fund and is under review. No funding has been awarded. The work listed under "Planned" would only be funded if the application is approved, and dates depend on the project start date confirmed by NLnet.
+An application (ID 2026-06-3b1, €35,000) to the NLnet NGI Zero Commons Fund was not funded. The project has no funding, and the work listed under "Planned" has not started.
 
 Disclosure: the maintainer, Eduard Arbitman, is a co-founder and the director of Charity Fund "Glory of Ukraine", which is named as a candidate pilot partner. A pilot with that foundation would not count as independent adoption.
 
@@ -51,7 +51,7 @@ pytest --cov=src
 
 The prototype code, the tests and most of the documentation in this repository were generated with Claude (Anthropic) under the direction of Eduard Arbitman. His part was defining the requirements and architecture, reviewing and testing the generated output, finding and correcting errors, and deciding what goes into the repository. He is responsible for its content.
 
-This follows the NLnet policy on generative AI. If the project is funded, AI assistants may still be used as tools, but the funded work will be done and understood by the human team, and every commit that adds AI-generated code will name the model and summarise the prompt in its commit message.
+Any future commit that adds AI-generated code will name the model and summarise the prompt in its commit message.
 
 ## Contributing
 
